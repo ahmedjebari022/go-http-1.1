@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"io"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -13,10 +13,21 @@ func main(){
 	if err != nil {
 		log.Fatalf("Error while resolving the address %s\n",err.Error())
 	}
-	conn, err := net.DialUDP("udp", add, nil)
+	conn, err := net.DialUDP("udp", nil, add)
 	if err != nil {
-		log.Fatal("Error while establishing the connexion %s\n",err.Error())
+		log.Fatalf("Error while establishing the connexion %s\n",err.Error())
 	}
-	bufio.NewReader(os.Stdin)
-	
+	defer conn.Close()
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Println(">")
+		data, err := reader.ReadString(10)
+		if err != nil {
+			fmt.Printf("Error while reading data: %s \n",err.Error())	
+		}
+		_, err = conn.Write([]byte(data))
+		if err != nil {
+			fmt.Printf("Error while writing to connexion: %s\n",err.Error())
+		}
+	}
 }
