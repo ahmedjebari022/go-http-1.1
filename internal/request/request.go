@@ -6,17 +6,23 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	header "github.com/ahmedjebari022/go-http-1.1/internal/headers"
 )
 
 type state int 
 const (
-	initialized = iota
-	done 
+	Initialized state = iota
+	Done 
+	ParsingHeaders
+	ParsingBody
 )
 
 type Request struct {
 	RequestLine 	RequestLine
 	State			state
+	Header 			header.Headers
+	Body			[]byte
 }
 
 type RequestLine struct {
@@ -30,13 +36,14 @@ const bufferSize = 8
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	request := Request{
 		RequestLine: RequestLine{},
+		Header : header.NewHeaders(),
 		State: 0,
 	}
-	buf := make([]byte, bufferSize, bufferSize)
+	buf := make([]byte, bufferSize)
 	readToIndex := 0
-	for request.State == 0 {
-		if len(buf) == cap(buf){
-			cp := make([]byte, len(buf)*2, cap(buf)*2)
+	for request.State != 1 {
+		if len(buf) == readToIndex{
+			cp := make([]byte, len(buf)*2)
 			copy(cp,buf)
 			buf = cp
 		}
@@ -45,7 +52,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			return &request, err
 		}
 		readToIndex += nr
-		np, err := request.parse(buf)
+		np, err := request.parse(buf[:readToIndex])
 		if err != nil {
 			return &request, err
 		}
@@ -81,7 +88,7 @@ func parseRequestLine(data []byte) (RequestLine, error, int) {
 		RequestTarget: requestLineSlice[1],
 		HttpVersion: strings.Split(requestLineSlice[2], "/")[1],
 	}
-	return requestLine, nil, i+1
+	return requestLine, nil, i+2
 }
 
 func checkValidHttpVersion(httpVersion string) bool {
@@ -94,20 +101,67 @@ func checkValidMethod(method string) bool {
 }
 
 
-func (r *Request) parse(data []byte) (int, error){
-	if r.State == 1{
+func (r *Request) parse(data []byte) (int, error){ 
+	totalBytesParse := 0
+	for r.State != 1 {
+		n, err := r.parseSingle(data[totalBytesParse:])
+		if err != nil {
+			return 0, err
+		}
+		totalBytesParse += n
+		if n == 0 {
+			break
+		}
+	}
+	return totalBytesParse, nil 	
+
+}
+
+
+
+func (r *Request) parseSingle(data []byte) (int, error){
+	switch r.State {
+	case 1 :
 		return 0, errors.New("error: trying to read data in a done state")
+	case 0 :
+		requestLine, err, n := parseRequestLine(data)
+		if err != nil {
+			return 0, err
+		}
+		if n == 0 {
+			return 0, nil
+		}
+		r.RequestLine = requestLine
+		r.State = 2
+		return n, nil
+	case 2 :		
+		n, done , err := r.Header.Parse(data)	
+		if err != nil {
+			return 0, err
+		}
+		if done {
+			r.State = ParsingBody
+			return n, nil
+		}
+		return n, nil
+	case 3 :
+		bodyLength, err := r.Header.Get("Content-length")
+		if err != nil {
+			return 0, err
+		}
+		if bodyLength == -1 {
+			r.State = Done
+			return 0, nil
+		}
+		r.Body = append(r.Body, data...)
+		if len(r.Body) == bodyLength{
+			r.State = Done										
+		}else if len(r.Body) > bodyLength{
+			return 0, fmt.Errorf("content length header and body length don't match")
+		}
+		fmt.Println("consumed the whole data")
+		return len(data), nil
+	default: 
+		return 0, fmt.Errorf("unknown state")
 	}
-	requestLine, err, n := parseRequestLine(data)
-	if err != nil {
-		return 0, err
-	}
-	if n == 0 {
-		return 0, nil
-	}
-	r.RequestLine = requestLine
-	r.State = 1
-	return n, nil
-
-
 }

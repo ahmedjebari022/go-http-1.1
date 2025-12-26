@@ -40,7 +40,7 @@ func TestHeader(t *testing.T){
 	data = []byte("\r\n")
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
-	assert.Equal(t, 0, n)
+	assert.Equal(t, 2, n)
 	assert.True(t, done)
 
 	headers = NewHeaders()
@@ -49,4 +49,14 @@ func TestHeader(t *testing.T){
 	require.Error(t, err)
 	assert.Equal(t, 0, n)
 	assert.False(t, done)
+	//testing multipe field Name
+	headers = NewHeaders()
+	headers["host"] = "locahost:30122"
+	data = []byte("Host: localhost:42069\r\n\r\n")
+	n, done, err = headers.Parse(data)
+	require.NoError(t, err)
+	assert.Equal(t, 23, n)
+	assert.False(t, done)
+	assert.Equal(t, "locahost:30122, localhost:42069", headers["host"])
+
 }

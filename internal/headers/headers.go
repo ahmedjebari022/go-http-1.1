@@ -3,6 +3,8 @@ package header
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -17,7 +19,7 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error){
 	if i == -1 {
 		return 0, false, nil
 	}else if i == 0 {
-		return 0, true, nil
+		return 2, true, nil
 	}
 	dataslice := strings.SplitN(string(data[:i]), ":", 2)
 	if len(dataslice) < 2 {
@@ -28,14 +30,34 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error){
 	if c := strings.ContainsFunc(fieldName, containsSeparator); c || len(fieldName) < 1{
 		return 0, false, errors.New("Field name poorly formatted")
 	}
-	
-	fieldName = strings.TrimRight(fieldName, " ")
+	fieldName = strings.ToLower(strings.TrimRight(fieldName, " "))
 	fieldValue = strings.Trim(fieldValue, " ")
-	h[strings.ToLower(fieldName)] = fieldValue
+	if _, ok := h[fieldName]; ok {
+		fmt.Println("Found key map")
+		h[fieldName] += fmt.Sprintf(", %s", fieldValue)
+	}else{
+		h[fieldName] = fieldValue
+	}
 	return i+2, false, nil
 }
 
 
 func containsSeparator(r rune ) bool {
 	return r == ' ' || r == '/' || r == ',' || r == ';' || r == ':' || r == '\\'
+}
+
+
+
+func (h Headers) Get(key string) (int, error) {
+	key = strings.ToLower(key)
+	v, ok := h[key]
+	if !ok {
+		return -1, nil
+	}
+	bodyLength, err := strconv.Atoi(v)
+	if err != nil {
+		return 0, err
+	}
+	return bodyLength, nil
+
 }
