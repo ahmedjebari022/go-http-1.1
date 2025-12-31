@@ -1,6 +1,7 @@
 package request
 
 import (
+	"fmt"
 	"io"
 	"testing"
 
@@ -55,7 +56,54 @@ func TestRequestLineParse(t *testing.T){
 		numBytesPerRead: 3,
 	}
 	r, err = RequestFromReader(reader)
+	fmt.Println(err.Error())
 	require.Error(t, err)
+
+	reader = &chunkReader{
+		data: "POST /submit HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"Content-Length: 5\r\n" +
+			"\r\n" +
+			"partial content\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.Error(t, err)
+
+	reader = &chunkReader{
+		data: "POST /submit HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"Content-Length: 0\r\n" +
+			"\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+	require.Nil(t, r.Body)
+
+	reader = &chunkReader{
+		data: "POST /submit HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"Content-Length: 10\r\n" +
+			"\r\n" +
+			"short\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.Error(t, err)
+
+	reader = &chunkReader{
+		data: "POST /submit HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"\r\n" +
+			"short\r\n",
+		numBytesPerRead: 3,
+	}
+	r, err = RequestFromReader(reader)
+	require.NoError(t, err)
+
+
+
 
 	// r, err := RequestFromReader(strings.NewReader("GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
 	// require.NoError(t, err)

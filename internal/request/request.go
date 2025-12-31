@@ -149,17 +149,19 @@ func (r *Request) parseSingle(data []byte) (int, error){
 		if err != nil {
 			return 0, err
 		}
+		
 		if bodyLength == -1 {
 			r.State = Done
 			return 0, nil
 		}
 		r.Body = append(r.Body, data...)
 		if len(r.Body) == bodyLength{
+			fmt.Println("consumed the whole data")
 			r.State = Done										
 		}else if len(r.Body) > bodyLength{
 			return 0, fmt.Errorf("content length header and body length don't match")
 		}
-		fmt.Println("consumed the whole data")
+
 		return len(data), nil
 	default: 
 		return 0, fmt.Errorf("unknown state")
