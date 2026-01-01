@@ -59,5 +59,9 @@ func (h Headers) Get(key string) (int, error) {
 		return 0, err
 	}
 	return bodyLength, nil
+}
 
+
+func (h Headers) Set(key, value string) {
+	h[key] = value	
 }

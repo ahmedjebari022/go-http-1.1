@@ -8,11 +8,6 @@ import (
 	header "github.com/ahmedjebari022/go-http-1.1/internal/headers"
 )
 
-
-type Response struct{
-
-}
-
 type StatusCode int
 const (
 	Success StatusCode = iota
@@ -20,6 +15,42 @@ const (
 	ServerError
 )
 
+type Writer struct{
+	conn 		io.Writer
+	Header 	header.Headers 
+}
+func NewWriter(conn io.Writer) Writer{
+	defaultHeaders := GetDefaultHeaders(0)
+	return Writer{
+		conn: 		conn,
+		Header: 	defaultHeaders, 	
+	}
+}
+
+func (w *Writer) WriteHeaders(headers header.Headers) error{
+	err := WriteHeaders(w.conn, headers)	
+	if err != nil {
+		fmt.Printf("Error: %s\n", err.Error())
+		return err
+	}
+	return nil
+}
+func (w *Writer) WriteStatusLine(statusCode StatusCode) error{
+	err := WriteStatusLine(w.conn, statusCode)
+	if err != nil {
+		fmt.Printf("Error: %s\n",err.Error())
+		return err
+	}
+	return nil
+}
+func (w *Writer) WriteBody(p []byte) (int, error){
+	n, err := w.conn.Write(p)
+	if err != nil {
+		fmt.Printf("Error: %s\n", err.Error())
+		return n, err
+	}
+	return n, nil
+}
 
 func (c StatusCode) String() string {
 	cm := map[StatusCode]string {
