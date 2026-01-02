@@ -19,6 +19,7 @@ type Writer struct{
 	conn 		io.Writer
 	Header 	header.Headers 
 }
+
 func NewWriter(conn io.Writer) Writer{
 	defaultHeaders := GetDefaultHeaders(0)
 	return Writer{
@@ -50,6 +51,35 @@ func (w *Writer) WriteBody(p []byte) (int, error){
 		return n, err
 	}
 	return n, nil
+}
+
+func (w *Writer) WriteChunkedBody(p []byte) (int, error){
+	len := len(p)
+	hex := fmt.Sprintf("%x", len)
+	chuncked := []byte(hex + "\r\n")
+	p = append(p, []byte("\r\n")...)
+	chuncked = append(chuncked, p...)
+
+	n, err := w.conn.Write(chuncked)
+	if err != nil {
+		return n, err
+	}
+	return n, nil
+}
+func (w *Writer) WriteChunkedBodyDone() (int, error){
+	chuncked := []byte(fmt.Sprintf("%x",0) + "\r\n")
+	n, err := w.conn.Write(chuncked)
+	if err != nil {
+		return n, err
+	}
+	return n, nil
+}
+func (w *Writer) WriteTrailers(h header.Headers) error{
+	err := WriteHeaders(w.conn, h)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c StatusCode) String() string {
@@ -109,3 +139,4 @@ func WriteHeaders(w io.Writer, headers header.Headers) error {
 	}
 	return nil
 }
+

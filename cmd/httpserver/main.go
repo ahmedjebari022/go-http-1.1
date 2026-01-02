@@ -130,3 +130,4 @@ func refactoredHandler(w *response.Writer, req *request.Request) {
 		}
 	}
 }
+
